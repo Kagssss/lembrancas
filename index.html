@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lembranças — slideshow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b1020; --ink:#e5e7eb }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{background:var(--bg);color:var(--ink)}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    .stage{
+      position:relative; width:100%; height:86vh; max-height:980px; 
+      border-radius:18px; border:1px solid rgba(255,255,255,.12);
+      overflow:hidden; display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(800px 400px at 20% 0%, rgba(125,211,252,.10), transparent 50%),
+                  radial-gradient(700px 400px at 80% 100%, rgba(99,102,241,.10), transparent 50%),
+                  #0d1225;
+    }
+    .slide{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .6s ease}
+    .slide.active{opacity:1}
+    .slide img,.slide video{
+      max-width:100%; max-height:100%; object-fit:contain; 
+      background:transparent; border-radius:12px;
+    }
+    .texto{
+      padding:26px 22px; border-radius:14px;
+      background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+      text-align:center; max-width:min(760px, 92%); line-height:1.5;
+      font-size:clamp(16px, 2.2vw, 20px);
+    }
+    .glass{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px)}
+    .hint{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5); z-index:40}
+    .hint.show{display:flex}
+
+    /* ===== CARTA ESTILIZADA ===== */
+    .carta-wrap { display:flex; align-items:center; justify-content:center; }
+    .carta { 
+      max-width: 860px; width:100%;
+      background: #0b1020;
+    }
+    .paper {
+      position:relative;
+      margin: 0 auto;
+      padding: clamp(20px, 4vw, 36px) clamp(22px, 4.5vw, 44px);
+      border-radius: 16px;
+      background:
+        radial-gradient(1200px 300px at -20% 0%, rgba(255,255,255,.06), transparent 40%),
+        radial-gradient(1000px 300px at 120% 100%, rgba(255,255,255,.06), transparent 40%),
+        #0f152d;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow:
+        0 10px 30px rgba(0,0,0,.35),
+        inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .carta-title {
+      font-family: "Playfair Display", serif;
+      font-weight: 600;
+      letter-spacing: .5px;
+    }
+    .quote-mark {
+      position: absolute; 
+      top: -18px; left: 22px;
+      font-family: "Playfair Display", serif;
+      font-size: 60px; line-height: 1;
+      color: rgba(255,255,255,.15);
+      user-select:none;
+    }
+    #cartaTexto {
+      font-family: "Playfair Display", serif;
+      font-size: clamp(15px, 2.1vw, 18px);
+      line-height: 1.9;
+      color: #e8ebf5;
+      letter-spacing: .2px;
+      text-wrap: pretty;
+    }
+    #cartaTexto p { margin: 0 0 12px; }
+    #cartaTexto p + p { text-indent: 1.4em; }
+    #cartaTexto em { opacity:.95; }
+    #cartaTexto strong { color: #ffffff; }
+    .assinatura {
+      margin-top: 18px;
+      font-family: "Dancing Script", cursive;
+      font-size: clamp(22px, 3.2vw, 30px);
+      color: #f2d9ff;
+      text-align: right;
+    }
+    .reveal { opacity:0; transform: translateY(10px) scale(.995); transition: all .6s ease; }
+    .reveal.show { opacity:1; transform: translateY(0) scale(1); }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1 class="text-3xl sm:text-4xl font-bold text-center">E❤️J</h1>
+  </header>
+
+  <main class="wrap">
+    <section id="stage" class="stage"></section>
+
+    <!-- CARTA BONITA -->
+    <section id="cartaBox" class="mt-8 hidden carta-wrap">
+      <div class="carta">
+        <div class="paper reveal">
+          <div class="quote-mark">“</div>
+          <h2 class="carta-title text-2xl sm:text-3xl mb-4 text-center">Uma carta</h2>
+          <div id="cartaTexto" class="leading-7 text-slate-200"></div>
+          <!-- Assinatura opcional -->
+          <div id="assinatura" class="assinatura hidden">— E.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap pb-6 text-center text-sm text-slate-400">
+  </footer>
+
+  <audio id="audio" preload="metadata"></audio>
+  <div id="audioHint" class="hint">
+    <div class="texto">Toque em qualquer lugar para <b>ativar o áudio</b> 🎵</div>
+  </div>
+
+  <script>
+    const SEQUENCIA = [
+      { tipo:"texto", ms: 6500, texto:"Antes de tudo, obrigado por ter aceitado conversar comigo e por estar aqui agora... Eu sei que não foi fácil..." },
+      { tipo:"texto", ms: 4000, texto:"Por favor, vê tudo até o final." },
+      { tipo:"foto", src:"fotos/1.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/2.jpg", ms:3500 },
+      { tipo:"video", src:"fotos/3.mp4" },
+      { tipo:"foto", src:"fotos/4.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/5.jpg", ms:3500 },
+      { tipo:"texto", ms: 6000, texto:"Tudo começou tão simples, mas desde o primeiro instante eu soube que você ia ser diferente." },
+      { tipo:"foto", src:"fotos/6.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/7.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/8.jpg", ms:3500 },
+      { tipo:"video", src:"fotos/9.mp4" },
+      { tipo:"foto", src:"fotos/10.jpg", ms:3500 },
+      { tipo:"texto", ms:4000, texto:"100..." },
+      { tipo:"foto", src:"fotos/11.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/12.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/13.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/14.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/15.jpg", ms:3500 },
+      { tipo:"texto", ms:3500, texto:"Toda vez que você sorria, meu mundo ficava mais leve." },
+      { tipo:"foto", src:"fotos/16.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/17.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/18.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/19.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/20.jpg", ms:3500 },
+      { tipo:"texto", ms:4500, texto:"Mesmo nos momentos ruins, eu ficava bem, porque eu tinha você." },
+      { tipo:"foto", src:"fotos/21.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/22.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/23.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/24.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/25.jpg", ms:3500 },
+      { tipo:"texto", ms:4000, texto:"Te amar era fácil. Difícil era imaginar um mundo sem você." },
+      { tipo:"foto", src:"fotos/26.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/27.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/28.jpg", ms:3500 },
+      { tipo:"video", src:"fotos/29.mp4"},
+      { tipo:"foto", src:"fotos/30.jpg", ms:3500 },
+      { tipo:"texto", ms:3500, texto:"Você foi lar, abrigo, e também saudade. Tudo ao mesmo tempo." },
+      { tipo:"foto", src:"fotos/31.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/32.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/33.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/34.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/35.jpg", ms:3500 },
+      { tipo:"texto", ms:3500, texto:"Se eu pudesse, pausava o mundo e deixava só nós dois aqui por um instante." },
+      { tipo:"foto", src:"fotos/36.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/37.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/38.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/39.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/40.jpg", ms:3500 },
+      { tipo:"texto", ms:3500, texto:"Você foi a melhor parte da minha vida." },
+      { tipo:"foto", src:"fotos/41.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/42.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/43.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/44.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/45.jpg", ms:3500 },
+      { tipo:"foto", src:"fotos/46.jpg", ms:3500 },
+      { tipo:"texto", ms:3500, texto:"Obrigado por ter sido parte do meu melhor. Agora fica a nossa carta." }
+    ];
+
+    const PLAYLIST = ["musicas/4.mp3","musicas/3.mp3"];
+    const MUSIC_VOLUME = 0.6;
+    const MUSIC_DELAY_MS = 4000;
+
+    const stage = document.getElementById("stage");
+    const cartaBox = document.getElementById("cartaBox");
+    const audio = document.getElementById("audio");
+    const audioHint = document.getElementById("audioHint");
+
+    const slides = SEQUENCIA.map(item => {
+      const wrap = document.createElement("div");
+      wrap.className = "slide";
+      let el;
+      if (item.tipo === "texto") {
+        el = document.createElement("div");
+        el.className = "texto";
+        el.textContent = item.texto;
+      } else if (item.tipo === "foto") {
+        el = document.createElement("img");
+        el.src = item.src; el.alt = "foto"; el.loading = "lazy";
+      } else if (item.tipo === "video") {
+        el = document.createElement("video");
+        el.src = item.src; el.playsInline = true; el.preload = "metadata";
+        el.controls = false; el.muted = false;
+      }
+      wrap.appendChild(el);
+      stage.appendChild(wrap);
+      return { wrap, el, ...item };
+    });
+
+    let i=0, t=null;
+    function clearTimer(){ if(t){clearTimeout(t);t=null;} }
+
+    function show(k){
+      clearTimer();
+      slides.forEach((s,idx)=>s.wrap.classList.toggle("active", idx===k));
+      const cur=slides[k];
+      if(cur.tipo==="video"){
+        cur.el.currentTime=0;
+        cur.el.onended=()=>next();
+        cur.el.play().catch(()=>{});
+      }
+      if(cur.tipo==="texto"||cur.tipo==="foto"){
+        const ms=Math.max(1500,cur.ms||3000);
+        t=setTimeout(()=>next(),ms);
+      }
+      i=k;
+    }
+
+    function next(){
+      const n=i+1;
+      if(n>=slides.length){
+        stage.classList.add("glass");
+        slides[i].wrap.classList.remove("active");
+        carregarCarta();
+        return;
+      }
+      show(n);
+    }
+
+    let track=0,musicTimer=null;
+    function loadTrack(idx){
+      if(!PLAYLIST.length)return;
+      track=(idx+PLAYLIST.length)%PLAYLIST.length;
+      audio.src=PLAYLIST[track];
+      audio.volume=MUSIC_VOLUME;
+      audio.play().catch(()=>audioHint.classList.add("show"));
+    }
+    function startMusicWithDelay(){
+      if(!PLAYLIST.length)return;
+      clearTimeout(musicTimer);
+      musicTimer=setTimeout(()=>loadTrack(0),MUSIC_DELAY_MS);
+    }
+    audio.addEventListener("ended",()=>loadTrack(track+1));
+    window.addEventListener("pointerdown",()=>{
+      if(audioHint.classList.contains("show")){
+        audioHint.classList.remove("show");
+        clearTimeout(musicTimer);
+        if(audio.src)audio.play().catch(()=>{});
+        else startMusicWithDelay();
+      }
+    },{once:true});
+
+    async function carregarCarta(){
+      try{
+        const resp=await fetch('carta.txt?'+Date.now());
+        if(!resp.ok)throw new Error('sem carta.txt');
+        const raw=(await resp.text()).trim();
+        const html=raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
+        const texto=document.getElementById('cartaTexto');
+        texto.innerHTML=html||'<p>...</p>';
+        const assinatura=document.getElementById('assinatura');
+        // assinatura.textContent='— E.'; // troque aqui se quiser mostrar
+        // assinatura.classList.remove('hidden');
+        cartaBox.classList.remove('hidden');
+        const card=cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=>card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
+      }catch(e){
+        const texto=document.getElementById('cartaTexto');
+        texto.innerHTML='<p>Carta indisponível. (Se estiver abrindo com file://, rode um servidor local.)</p>';
+        cartaBox.classList.remove('hidden');
+        const card=cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=>card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    }
+
+    if(slides.length)show(0);
+    if(PLAYLIST.length)startMusicWithDelay();
+  </script>
+</body>
+</html>
