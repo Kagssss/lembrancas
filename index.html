@@ -41,20 +41,13 @@
       animation: pulse 1.5s infinite;
       margin-bottom: 14px;
     }
-    @keyframes pulse {
-      0%,100%{transform:scale(1);}
-      50%{transform:scale(1.2);}
-    }
+    @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2);} }
 
-    /* ===== CARTA ESTILIZADA ===== */
+    /* ===== CARTA ===== */
     .carta-wrap { display:flex; align-items:center; justify-content:center; }
-    .carta { 
-      max-width: 860px; width:100%;
-      background: #0b1020;
-    }
+    .carta { max-width: 860px; width:100%; background: #0b1020; }
     .paper {
-      position:relative;
-      margin: 0 auto;
+      position:relative; margin:0 auto;
       padding: clamp(20px, 4vw, 36px) clamp(22px, 4.5vw, 44px);
       border-radius: 16px;
       background:
@@ -62,44 +55,16 @@
         radial-gradient(1000px 300px at 120% 100%, rgba(255,255,255,.06), transparent 40%),
         #0f152d;
       border: 1px solid rgba(255,255,255,.14);
-      box-shadow:
-        0 10px 30px rgba(0,0,0,.35),
-        inset 0 0 0 1px rgba(255,255,255,.05);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.05);
     }
-    .carta-title {
-      font-family: "Playfair Display", serif;
-      font-weight: 600;
-      letter-spacing: .5px;
-    }
-    .quote-mark {
-      position: absolute; 
-      top: -18px; left: 22px;
-      font-family: "Playfair Display", serif;
-      font-size: 60px; line-height: 1;
-      color: rgba(255,255,255,.15);
-      user-select:none;
-    }
-    #cartaTexto {
-      font-family: "Playfair Display", serif;
-      font-size: clamp(15px, 2.1vw, 18px);
-      line-height: 1.9;
-      color: #e8ebf5;
-      letter-spacing: .2px;
-      text-wrap: pretty;
-    }
-    #cartaTexto p { margin: 0 0 12px; }
-    #cartaTexto p + p { text-indent: 1.4em; }
-    #cartaTexto em { opacity:.95; }
-    #cartaTexto strong { color: #ffffff; }
-    .assinatura {
-      margin-top: 18px;
-      font-family: "Dancing Script", cursive;
-      font-size: clamp(22px, 3.2vw, 30px);
-      color: #f2d9ff;
-      text-align: right;
-    }
-    .reveal { opacity:0; transform: translateY(10px) scale(.995); transition: all .6s ease; }
-    .reveal.show { opacity:1; transform: translateY(0) scale(1); }
+    .carta-title { font-family:"Playfair Display",serif; font-weight:600; letter-spacing:.5px; }
+    .quote-mark { position:absolute; top:-18px; left:22px; font-family:"Playfair Display",serif; font-size:60px; color:rgba(255,255,255,.15); user-select:none; }
+    #cartaTexto { font-family:"Playfair Display",serif; font-size:clamp(15px,2.1vw,18px); line-height:1.9; color:#e8ebf5; letter-spacing:.2px; text-wrap:pretty; }
+    #cartaTexto p { margin:0 0 12px; }
+    #cartaTexto p + p { text-indent:1.4em; }
+    .assinatura { margin-top:18px; font-family:"Dancing Script",cursive; font-size:clamp(22px,3.2vw,30px); color:#f2d9ff; text-align:right; }
+    .reveal { opacity:0; transform:translateY(10px) scale(.995); transition:all .6s ease; }
+    .reveal.show { opacity:1; transform:translateY(0) scale(1); }
   </style>
 </head>
 <body>
@@ -122,8 +87,7 @@
     </section>
   </main>
 
-  <footer class="wrap pb-6 text-center text-sm text-slate-400">
-  </footer>
+  <footer class="wrap pb-6 text-center text-sm text-slate-400"></footer>
 
   <audio id="audio" preload="metadata"></audio>
   <div id="audioHint" class="hint">
@@ -132,6 +96,7 @@
   </div>
 
   <script>
+    /* ========= CONFIG ========= */
     const SEQUENCIA = [
       { tipo:"texto", ms:6500, texto:"Primeiramente, obrigado por ter aceitado conversar comigo e por estar aqui agora... Eu sei que não foi fácil..." },
       { tipo:"texto", ms:4000, texto:"Por favor, vê tudo até o final." },
@@ -190,92 +155,170 @@
     const MUSIC_VOLUME = 0.6;
     const MUSIC_DELAY_MS = 4000;
 
-    const stage=document.getElementById("stage");
-    const cartaBox=document.getElementById("cartaBox");
-    const audio=document.getElementById("audio");
-    const audioHint=document.getElementById("audioHint");
+    const stage = document.getElementById("stage");
+    const cartaBox = document.getElementById("cartaBox");
+    const audio = document.getElementById("audio");
+    const audioHint = document.getElementById("audioHint");
 
-    const slides=SEQUENCIA.map(item=>{
-      const wrap=document.createElement("div");
-      wrap.className="slide";
+    // cria slides
+    const slides = SEQUENCIA.map(item => {
+      const wrap = document.createElement("div");
+      wrap.className = "slide";
       let el;
-      if(item.tipo==="texto"){el=document.createElement("div");el.className="texto";el.textContent=item.texto;}
-      else if(item.tipo==="foto"){el=document.createElement("img");el.src=item.src;el.alt="foto";}
-      else if(item.tipo==="video"){el=document.createElement("video");el.src=item.src;el.playsInline=true;el.preload="metadata";el.controls=false;el.muted=false;}
+      if (item.tipo === "texto") {
+        el = document.createElement("div");
+        el.className = "texto";
+        el.textContent = item.texto;
+      } else if (item.tipo === "foto") {
+        el = document.createElement("img");
+        el.src = item.src; el.alt = "foto";
+      } else if (item.tipo === "video") {
+        // ⚠️ atributos necessários pro iPhone
+        const v = document.createElement("video");
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        v.playsInline = true;
+        v.muted = true;          // autoplay permitido
+        v.preload = "auto";
+        v.controls = false;
+        v.src = item.src;
+        el = v;
+      }
       wrap.appendChild(el);
       stage.appendChild(wrap);
-      return{wrap,el,...item};
+      return { wrap, el, ...item };
     });
 
-    let i=0,t=null;
-    function clearTimer(){if(t){clearTimeout(t);t=null;}}
+    /* ========= LÓGICA ========= */
+    let i = 0, t = null;
+    function clearTimer(){ if (t) { clearTimeout(t); t=null; } }
+
+    // vídeo com fallback (Safari) e integração com áudio de fundo
+    function playVideo(el){
+      const hadMusic = !audio.paused;
+      if (hadMusic) audio.pause();
+
+      el.muted = true;           // garante autoplay
+      el.playsInline = true;
+      el.currentTime = 0;
+      try { el.load(); } catch {}
+
+      let started = false;
+      const watchdog = setTimeout(() => {
+        if (!started) {
+          // não iniciou: segue o show
+          if (hadMusic) audio.play().catch(()=>{});
+          next();
+        }
+      }, 4000);
+
+      el.onplay  = () => { started = true; clearTimeout(watchdog); };
+      el.onended = () => { if (hadMusic) audio.play().catch(()=>{}); next(); };
+      el.onerror = () => { if (hadMusic) audio.play().catch(()=>{}); next(); };
+
+      el.play().catch(() => {
+        // última tentativa: ligar play ao próximo toque
+        const tryOnTouch = () => { el.play().catch(()=>{}); document.removeEventListener('touchstart', tryOnTouch); };
+        document.addEventListener('touchstart', tryOnTouch, { once:true, passive:true });
+      });
+
+      // opcional: desmutar no toque
+      const unmuteOnce = () => { el.muted = false; el.play().catch(()=>{}); el.removeEventListener('pointerdown', unmuteOnce); };
+      el.addEventListener('pointerdown', unmuteOnce, { once:true });
+    }
 
     function show(k){
       clearTimer();
-      slides.forEach((s,idx)=>s.wrap.classList.toggle("active",idx===k));
-      const cur=slides[k];
-      if(cur.tipo==="video"){cur.el.currentTime=0;cur.el.onended=()=>next();cur.el.play().catch(()=>{});}
-      if(cur.tipo==="texto"||cur.tipo==="foto"){const ms=Math.max(1500,cur.ms||3000);t=setTimeout(()=>next(),ms);}
-      i=k;
+      slides.forEach((s,idx)=> s.wrap.classList.toggle("active", idx===k));
+      const cur = slides[k];
+
+      if (cur.tipo === "video") {
+        playVideo(cur.el);
+      } else if (cur.tipo === "texto" || cur.tipo === "foto") {
+        const ms = Math.max(1500, cur.ms || 3000);
+        t = setTimeout(()=> next(), ms);
+      }
+      i = k;
     }
 
     function next(){
-      const n=i+1;
-      if(n>=slides.length){stage.classList.add("glass");slides[i].wrap.classList.remove("active");carregarCarta();return;}
+      const n = i + 1;
+      if (n >= slides.length) {
+        stage.classList.add("glass");
+        slides[i].wrap.classList.remove("active");
+        carregarCarta();
+        return;
+      }
       show(n);
     }
 
-    let track=0,musicTimer=null;
+    // música
+    let track = 0, musicTimer = null;
     function loadTrack(idx){
-      if(!PLAYLIST.length)return;
-      track=(idx+PLAYLIST.length)%PLAYLIST.length;
-      audio.src=PLAYLIST[track];
-      audio.volume=MUSIC_VOLUME;
-      audio.play().catch(()=>audioHint.classList.add("show"));
+      if (!PLAYLIST.length) return;
+      track = (idx + PLAYLIST.length) % PLAYLIST.length;
+      audio.src = PLAYLIST[track];
+      audio.volume = MUSIC_VOLUME;
+      audio.play().catch(()=> audioHint.classList.add("show"));
     }
     function startMusicWithDelay(){
-      if(!PLAYLIST.length)return;
+      if (!PLAYLIST.length) return;
       clearTimeout(musicTimer);
-      musicTimer=setTimeout(()=>loadTrack(0),MUSIC_DELAY_MS);
+      musicTimer = setTimeout(()=> loadTrack(0), MUSIC_DELAY_MS);
     }
-    audio.addEventListener("ended",()=>loadTrack(track+1));
+    audio.addEventListener("ended", ()=> loadTrack(track+1));
 
-    // ✅ corrigido: toca no celular ao primeiro toque
-    window.addEventListener("pointerdown",()=>{
-      if(audioHint.classList.contains("show")){
-        audioHint.classList.remove("show");
-        clearTimeout(musicTimer);
-        if(!audio.src)loadTrack(0);
-        else audio.play().catch(()=>{});
+    // desbloqueio robusto (Android/iOS)
+    let audioCtx = null;
+    function ensureAudioContext(){
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) { audioCtx = new Ctx(); try { audioCtx.resume(); } catch {} }
       }
-    },{once:false});
+    }
+    function unlockAudio(){
+      ensureAudioContext();
+      if (!audio.src) loadTrack(0);
+      audio.muted = false;
+      audio.volume = MUSIC_VOLUME;
+      audio.play().catch(()=>{});
+      audioHint.classList.remove("show");
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    }
+    window.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio, { passive:true });
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
 
+    // carta (carrega carta.txt)
     async function carregarCarta(){
       try{
-        const resp=await fetch('carta.txt?'+Date.now());
-        if(!resp.ok)throw new Error('sem carta.txt');
-        const raw=(await resp.text()).trim();
-        const html=raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
-        const texto=document.getElementById('cartaTexto');
-        texto.innerHTML=html||'<p>...</p>';
+        const resp = await fetch('carta.txt?'+Date.now());
+        if(!resp.ok) throw new Error('sem carta.txt');
+        const raw = (await resp.text()).trim();
+        const html = raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
+        const texto = document.getElementById('cartaTexto');
+        texto.innerHTML = html || '<p>...</p>';
         cartaBox.classList.remove('hidden');
-        const card=cartaBox.querySelector('.paper');
-        requestAnimationFrame(()=>card.classList.add('show'));
-        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
+        const card = cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=> card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth', block:'start'});
       }catch(e){
-        const texto=document.getElementById('cartaTexto');
-        texto.innerHTML='<p>Carta indisponível. (Se estiver abrindo com file://, rode um servidor local.)</p>';
+        const texto = document.getElementById('cartaTexto');
+        texto.innerHTML = '<p>Carta indisponível. (Se estiver abrindo com file://, rode um servidor local.)</p>';
         cartaBox.classList.remove('hidden');
-        const card=cartaBox.querySelector('.paper');
-        requestAnimationFrame(()=>card.classList.add('show'));
-        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
+        const card = cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=> card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth', block:'start'});
       }
     }
 
-    if(slides.length)show(0);
-    if(PLAYLIST.length)startMusicWithDelay();
+    // iniciar
+    if (slides.length) show(0);
+    if (PLAYLIST.length) startMusicWithDelay();
   </script>
 </body>
 </html>
-
-
