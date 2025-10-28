@@ -33,8 +33,18 @@
       font-size:clamp(16px, 2.2vw, 20px);
     }
     .glass{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px)}
-    .hint{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5); z-index:40}
+    .hint{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); z-index:40; flex-direction:column;}
     .hint.show{display:flex}
+    .pulse-heart {
+      font-size: 50px;
+      color: #ff4d6d;
+      animation: pulse 1.5s infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes pulse {
+      0%,100%{transform:scale(1);}
+      50%{transform:scale(1.2);}
+    }
 
     /* ===== CARTA ESTILIZADA ===== */
     .carta-wrap { display:flex; align-items:center; justify-content:center; }
@@ -100,14 +110,12 @@
   <main class="wrap">
     <section id="stage" class="stage"></section>
 
-    <!-- CARTA BONITA -->
     <section id="cartaBox" class="mt-8 hidden carta-wrap">
       <div class="carta">
         <div class="paper reveal">
           <div class="quote-mark">“</div>
           <h2 class="carta-title text-2xl sm:text-3xl mb-4 text-center">Uma carta</h2>
           <div id="cartaTexto" class="leading-7 text-slate-200"></div>
-          <!-- Assinatura opcional -->
           <div id="assinatura" class="assinatura hidden">— E.</div>
         </div>
       </div>
@@ -115,41 +123,43 @@
   </main>
 
   <footer class="wrap pb-6 text-center text-sm text-slate-400">
+    52!.
   </footer>
 
   <audio id="audio" preload="metadata"></audio>
   <div id="audioHint" class="hint">
-    <div class="texto">Toque em qualquer lugar para <b>ativar o áudio</b> 🎵</div>
+    <div class="pulse-heart">❤️</div>
+    <div class="texto bg-transparent border-none">Toque para começar</div>
   </div>
 
   <script>
     const SEQUENCIA = [
-      { tipo:"texto", ms: 6500, texto:"Antes de tudo, obrigado por ter aceitado conversar comigo e por estar aqui agora... Eu sei que não foi fácil..." },
-      { tipo:"texto", ms: 4000, texto:"Por favor, vê tudo até o final." },
+      { tipo:"texto", ms:6500, texto:"Primeiramente, obrigado por ter aceitado conversar comigo e por estar aqui agora... Eu sei que não foi fácil..." },
+      { tipo:"texto", ms:4000, texto:"Por favor, vê tudo até o final." },
       { tipo:"foto", src:"fotos/1.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/2.jpg", ms:3500 },
       { tipo:"video", src:"fotos/3.mp4" },
       { tipo:"foto", src:"fotos/4.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/5.jpg", ms:3500 },
-      { tipo:"texto", ms: 6000, texto:"Tudo começou tão simples, mas desde o primeiro instante eu soube que você ia ser diferente." },
+      { tipo:"texto", ms:6000, texto:"Tudo começou tão simples, mas desde o primeiro instante eu soube que você ia ser diferente." },
       { tipo:"foto", src:"fotos/6.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/7.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/8.jpg", ms:3500 },
       { tipo:"video", src:"fotos/9.mp4" },
       { tipo:"foto", src:"fotos/10.jpg", ms:3500 },
-      { tipo:"texto", ms:4000, texto:"100..." },
+      { tipo:"texto", ms:4000, texto:"Toda vez que você sorria, meu mundo ficava mais leve." },
       { tipo:"foto", src:"fotos/11.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/12.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/13.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/14.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/15.jpg", ms:3500 },
-      { tipo:"texto", ms:3500, texto:"Toda vez que você sorria, meu mundo ficava mais leve." },
+      { tipo:"texto", ms:3500, texto:"100..." },
       { tipo:"foto", src:"fotos/16.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/17.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/18.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/19.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/20.jpg", ms:3500 },
-      { tipo:"texto", ms:4500, texto:"Mesmo nos momentos ruins, eu ficava bem, porque eu tinha você." },
+      { tipo:"texto", ms:4000, texto:"Até nos momentos ruins eu ficava bem, porque eu tinha você." },
       { tipo:"foto", src:"fotos/21.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/22.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/23.jpg", ms:3500 },
@@ -167,12 +177,6 @@
       { tipo:"foto", src:"fotos/33.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/34.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/35.jpg", ms:3500 },
-      { tipo:"texto", ms:3500, texto:"Se eu pudesse, pausava o mundo e deixava só nós dois aqui por um instante." },
-      { tipo:"foto", src:"fotos/36.jpg", ms:3500 },
-      { tipo:"foto", src:"fotos/37.jpg", ms:3500 },
-      { tipo:"foto", src:"fotos/38.jpg", ms:3500 },
-      { tipo:"foto", src:"fotos/39.jpg", ms:3500 },
-      { tipo:"foto", src:"fotos/40.jpg", ms:3500 },
       { tipo:"texto", ms:3500, texto:"Você foi a melhor parte da minha vida." },
       { tipo:"foto", src:"fotos/41.jpg", ms:3500 },
       { tipo:"foto", src:"fotos/42.jpg", ms:3500 },
@@ -183,63 +187,42 @@
       { tipo:"texto", ms:3500, texto:"Obrigado por ter sido parte do meu melhor. Agora fica a nossa carta." }
     ];
 
-    const PLAYLIST = ["musicas/4.mp3","musicas/3.mp3"];
+    const PLAYLIST = ["musicas/1.mp3","musicas/3.mp3"];
     const MUSIC_VOLUME = 0.6;
     const MUSIC_DELAY_MS = 4000;
 
-    const stage = document.getElementById("stage");
-    const cartaBox = document.getElementById("cartaBox");
-    const audio = document.getElementById("audio");
-    const audioHint = document.getElementById("audioHint");
+    const stage=document.getElementById("stage");
+    const cartaBox=document.getElementById("cartaBox");
+    const audio=document.getElementById("audio");
+    const audioHint=document.getElementById("audioHint");
 
-    const slides = SEQUENCIA.map(item => {
-      const wrap = document.createElement("div");
-      wrap.className = "slide";
+    const slides=SEQUENCIA.map(item=>{
+      const wrap=document.createElement("div");
+      wrap.className="slide";
       let el;
-      if (item.tipo === "texto") {
-        el = document.createElement("div");
-        el.className = "texto";
-        el.textContent = item.texto;
-      } else if (item.tipo === "foto") {
-        el = document.createElement("img");
-        el.src = item.src; el.alt = "foto"; el.loading = "lazy";
-      } else if (item.tipo === "video") {
-        el = document.createElement("video");
-        el.src = item.src; el.playsInline = true; el.preload = "metadata";
-        el.controls = false; el.muted = false;
-      }
+      if(item.tipo==="texto"){el=document.createElement("div");el.className="texto";el.textContent=item.texto;}
+      else if(item.tipo==="foto"){el=document.createElement("img");el.src=item.src;el.alt="foto";}
+      else if(item.tipo==="video"){el=document.createElement("video");el.src=item.src;el.playsInline=true;el.preload="metadata";el.controls=false;el.muted=false;}
       wrap.appendChild(el);
       stage.appendChild(wrap);
-      return { wrap, el, ...item };
+      return{wrap,el,...item};
     });
 
-    let i=0, t=null;
-    function clearTimer(){ if(t){clearTimeout(t);t=null;} }
+    let i=0,t=null;
+    function clearTimer(){if(t){clearTimeout(t);t=null;}}
 
     function show(k){
       clearTimer();
-      slides.forEach((s,idx)=>s.wrap.classList.toggle("active", idx===k));
+      slides.forEach((s,idx)=>s.wrap.classList.toggle("active",idx===k));
       const cur=slides[k];
-      if(cur.tipo==="video"){
-        cur.el.currentTime=0;
-        cur.el.onended=()=>next();
-        cur.el.play().catch(()=>{});
-      }
-      if(cur.tipo==="texto"||cur.tipo==="foto"){
-        const ms=Math.max(1500,cur.ms||3000);
-        t=setTimeout(()=>next(),ms);
-      }
+      if(cur.tipo==="video"){cur.el.currentTime=0;cur.el.onended=()=>next();cur.el.play().catch(()=>{});}
+      if(cur.tipo==="texto"||cur.tipo==="foto"){const ms=Math.max(1500,cur.ms||3000);t=setTimeout(()=>next(),ms);}
       i=k;
     }
 
     function next(){
       const n=i+1;
-      if(n>=slides.length){
-        stage.classList.add("glass");
-        slides[i].wrap.classList.remove("active");
-        carregarCarta();
-        return;
-      }
+      if(n>=slides.length){stage.classList.add("glass");slides[i].wrap.classList.remove("active");carregarCarta();return;}
       show(n);
     }
 
@@ -257,14 +240,16 @@
       musicTimer=setTimeout(()=>loadTrack(0),MUSIC_DELAY_MS);
     }
     audio.addEventListener("ended",()=>loadTrack(track+1));
+
+    // ✅ corrigido: toca no celular ao primeiro toque
     window.addEventListener("pointerdown",()=>{
       if(audioHint.classList.contains("show")){
         audioHint.classList.remove("show");
         clearTimeout(musicTimer);
-        if(audio.src)audio.play().catch(()=>{});
-        else startMusicWithDelay();
+        if(!audio.src)loadTrack(0);
+        else audio.play().catch(()=>{});
       }
-    },{once:true});
+    },{once:false});
 
     async function carregarCarta(){
       try{
@@ -274,9 +259,6 @@
         const html=raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
         const texto=document.getElementById('cartaTexto');
         texto.innerHTML=html||'<p>...</p>';
-        const assinatura=document.getElementById('assinatura');
-        // assinatura.textContent='— E.'; // troque aqui se quiser mostrar
-        // assinatura.classList.remove('hidden');
         cartaBox.classList.remove('hidden');
         const card=cartaBox.querySelector('.paper');
         requestAnimationFrame(()=>card.classList.add('show'));
