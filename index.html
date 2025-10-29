@@ -35,36 +35,23 @@
     .glass{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px)}
     .hint{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); z-index:40; flex-direction:column;}
     .hint.show{display:flex}
-    .pulse-heart {
-      font-size: 50px;
-      color: #ff4d6d;
-      animation: pulse 1.5s infinite;
-      margin-bottom: 14px;
-    }
-    @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2);} }
-
-    /* ===== CARTA ===== */
-    .carta-wrap { display:flex; align-items:center; justify-content:center; }
-    .carta { max-width: 860px; width:100%; background: #0b1020; }
-    .paper {
-      position:relative; margin:0 auto;
-      padding: clamp(20px, 4vw, 36px) clamp(22px, 4.5vw, 44px);
-      border-radius: 16px;
-      background:
-        radial-gradient(1200px 300px at -20% 0%, rgba(255,255,255,.06), transparent 40%),
-        radial-gradient(1000px 300px at 120% 100%, rgba(255,255,255,.06), transparent 40%),
-        #0f152d;
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.05);
-    }
-    .carta-title { font-family:"Playfair Display",serif; font-weight:600; letter-spacing:.5px; }
-    .quote-mark { position:absolute; top:-18px; left:22px; font-family:"Playfair Display",serif; font-size:60px; color:rgba(255,255,255,.15); user-select:none; }
-    #cartaTexto { font-family:"Playfair Display",serif; font-size:clamp(15px,2.1vw,18px); line-height:1.9; color:#e8ebf5; letter-spacing:.2px; text-wrap:pretty; }
-    #cartaTexto p { margin:0 0 12px; }
-    #cartaTexto p + p { text-indent:1.4em; }
-    .assinatura { margin-top:18px; font-family:"Dancing Script",cursive; font-size:clamp(22px,3.2vw,30px); color:#f2d9ff; text-align:right; }
-    .reveal { opacity:0; transform:translateY(10px) scale(.995); transition:all .6s ease; }
-    .reveal.show { opacity:1; transform:translateY(0) scale(1); }
+    .pulse-heart{font-size:50px;color:#ff4d6d;animation:pulse 1.5s infinite;margin-bottom:14px}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+    /* Carta */
+    .carta-wrap{display:flex;align-items:center;justify-content:center}
+    .carta{max-width:860px;width:100%;background:#0b1020}
+    .paper{position:relative;margin:0 auto;padding:clamp(20px,4vw,36px) clamp(22px,4.5vw,44px);border-radius:16px;background:
+      radial-gradient(1200px 300px at -20% 0%, rgba(255,255,255,.06), transparent 40%),
+      radial-gradient(1000px 300px at 120% 100%, rgba(255,255,255,.06), transparent 40%),
+      #0f152d;border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.05)}
+    .carta-title{font-family:"Playfair Display",serif;font-weight:600;letter-spacing:.5px}
+    .quote-mark{position:absolute;top:-18px;left:22px;font-family:"Playfair Display",serif;font-size:60px;color:rgba(255,255,255,.15);user-select:none}
+    #cartaTexto{font-family:"Playfair Display",serif;font-size:clamp(15px,2.1vw,18px);line-height:1.9;color:#e8ebf5;letter-spacing:.2px;text-wrap:pretty}
+    #cartaTexto p{margin:0 0 12px}
+    #cartaTexto p+p{text-indent:1.4em}
+    .assinatura{margin-top:18px;font-family:"Dancing Script",cursive;font-size:clamp(22px,3.2vw,30px);color:#f2d9ff;text-align:right}
+    .reveal{opacity:0;transform:translateY(10px) scale(.995);transition:all .6s ease}
+    .reveal.show{opacity:1;transform:translateY(0) scale(1)}
   </style>
 </head>
 <body>
@@ -96,7 +83,7 @@
   </div>
 
   <script>
-    /* ========= CONFIG ========= */
+    /* ====== CONFIG ====== */
     const SEQUENCIA = [
       { tipo:"texto", ms:6500, texto:"Primeiramente, obrigado por ter aceitado conversar comigo e por estar aqui agora... Eu sei que não foi fácil..." },
       { tipo:"texto", ms:4000, texto:"Por favor, vê tudo até o final." },
@@ -154,6 +141,7 @@
     const PLAYLIST = ["musicas/4.mp3","musicas/3.mp3"];
     const MUSIC_VOLUME = 0.6;
     const MUSIC_DELAY_MS = 4000;
+    const DUCK_VOLUME = 0.22; // volume da música durante vídeo (ducking)
 
     const stage = document.getElementById("stage");
     const cartaBox = document.getElementById("cartaBox");
@@ -161,70 +149,115 @@
     const audioHint = document.getElementById("audioHint");
 
     // cria slides
-    const slides = SEQUENCIA.map(item => {
+    const slides = SEQUENCIA.map(item=>{
       const wrap = document.createElement("div");
       wrap.className = "slide";
       let el;
-      if (item.tipo === "texto") {
-        el = document.createElement("div");
-        el.className = "texto";
-        el.textContent = item.texto;
-      } else if (item.tipo === "foto") {
-        el = document.createElement("img");
-        el.src = item.src; el.alt = "foto";
-      } else if (item.tipo === "video") {
-        // ⚠️ atributos necessários pro iPhone
-        const v = document.createElement("video");
-        v.setAttribute("playsinline", "");
-        v.setAttribute("webkit-playsinline", "");
-        v.playsInline = true;
-        v.muted = true;          // autoplay permitido
-        v.preload = "auto";
-        v.controls = false;
-        v.src = item.src;
-        el = v;
+      if(item.tipo==="texto"){ el=document.createElement("div"); el.className="texto"; el.textContent=item.texto; }
+      else if(item.tipo==="foto"){ el=document.createElement("img"); el.src=item.src; el.alt="foto"; }
+      else if(item.tipo==="video"){
+        const v=document.createElement("video");
+        // atributos pra iPhone
+        v.setAttribute("playsinline","");
+        v.setAttribute("webkit-playsinline","");
+        v.playsInline=true;
+        v.muted=true;         // começa mudo para autoplay
+        v.preload="auto";
+        v.controls=false;
+        v.src=item.src;
+        el=v;
       }
       wrap.appendChild(el);
       stage.appendChild(wrap);
       return { wrap, el, ...item };
     });
 
-    /* ========= LÓGICA ========= */
-    let i = 0, t = null;
-    function clearTimer(){ if (t) { clearTimeout(t); t=null; } }
+    /* ====== ÁUDIO GLOBAL (desbloqueio robusto) ====== */
+    let audioCtx=null, audioUnlocked=false;
+    function ensureAudioContext(){
+      if(!audioCtx){
+        const Ctx=window.AudioContext||window.webkitAudioContext;
+        if(Ctx){ audioCtx=new Ctx(); try{ audioCtx.resume(); }catch{} }
+      }
+    }
+    function unlockAudio(){
+      ensureAudioContext();
+      if(!audio.src) loadTrack(0);
+      audio.muted=false;
+      audio.volume=MUSIC_VOLUME;
+      audio.play().catch(()=>{});
+      audioHint.classList.remove("show");
+      audioUnlocked=true;
+      window.removeEventListener('pointerdown',unlockAudio);
+      window.removeEventListener('touchstart',unlockAudio);
+      window.removeEventListener('click',unlockAudio);
+      window.removeEventListener('keydown',unlockAudio);
+    }
+    window.addEventListener('pointerdown',unlockAudio);
+    window.addEventListener('touchstart',unlockAudio,{passive:true});
+    window.addEventListener('click',unlockAudio);
+    window.addEventListener('keydown',unlockAudio);
 
-    // vídeo com fallback (Safari) e integração com áudio de fundo
+    let track=0,musicTimer=null;
+    function loadTrack(idx){
+      if(!PLAYLIST.length) return;
+      track=(idx+PLAYLIST.length)%PLAYLIST.length;
+      audio.src=PLAYLIST[track];
+      audio.volume=MUSIC_VOLUME;
+      audio.play().catch(()=> audioHint.classList.add("show"));
+    }
+    function startMusicWithDelay(){
+      if(!PLAYLIST.length) return;
+      clearTimeout(musicTimer);
+      musicTimer=setTimeout(()=>loadTrack(0),MUSIC_DELAY_MS);
+    }
+    audio.addEventListener("ended",()=>loadTrack(track+1));
+
+    /* ====== SLIDES / VÍDEO (com ducking) ====== */
+    let i=0,t=null;
+    function clearTimer(){ if(t){ clearTimeout(t); t=null; } }
+
+    function safeUnmuteVideo(v){
+      // iOS exige que o play já tenha começado muted; depois podemos desmutar
+      if(audioUnlocked){
+        setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 80);
+      }
+    }
+
     function playVideo(el){
       const hadMusic = !audio.paused;
-      if (hadMusic) audio.pause();
+      let prevVol = audio.volume;
 
-      el.muted = true;           // garante autoplay
+      // DUCK: abaixa música, não pausa
+      if (hadMusic) audio.volume = DUCK_VOLUME;
+
+      el.muted = true;
       el.playsInline = true;
       el.currentTime = 0;
-      try { el.load(); } catch {}
+      try{ el.load(); }catch{}
 
-      let started = false;
-      const watchdog = setTimeout(() => {
-        if (!started) {
-          // não iniciou: segue o show
-          if (hadMusic) audio.play().catch(()=>{});
+      let started=false;
+      const watchdog=setTimeout(()=>{
+        if(!started){
+          // falhou: restaura música e segue
+          if(hadMusic) audio.volume = prevVol;
           next();
         }
       }, 4000);
 
-      el.onplay  = () => { started = true; clearTimeout(watchdog); };
-      el.onended = () => { if (hadMusic) audio.play().catch(()=>{}); next(); };
-      el.onerror = () => { if (hadMusic) audio.play().catch(()=>{}); next(); };
+      el.onplay = () => { started=true; clearTimeout(watchdog); safeUnmuteVideo(el); };
+      el.onended = () => { if(hadMusic) audio.volume = prevVol; next(); };
+      el.onerror = () => { if(hadMusic) audio.volume = prevVol; next(); };
 
-      el.play().catch(() => {
-        // última tentativa: ligar play ao próximo toque
-        const tryOnTouch = () => { el.play().catch(()=>{}); document.removeEventListener('touchstart', tryOnTouch); };
-        document.addEventListener('touchstart', tryOnTouch, { once:true, passive:true });
+      el.play().catch(()=>{
+        // tenta ligar ao próximo toque
+        const tryOnTouch=()=>{ el.play().catch(()=>{}); document.removeEventListener('touchstart',tryOnTouch); };
+        document.addEventListener('touchstart',tryOnTouch,{once:true,passive:true});
       });
 
-      // opcional: desmutar no toque
-      const unmuteOnce = () => { el.muted = false; el.play().catch(()=>{}); el.removeEventListener('pointerdown', unmuteOnce); };
-      el.addEventListener('pointerdown', unmuteOnce, { once:true });
+      // permitir desmutar com toque no vídeo (extra)
+      const unmuteOnce=()=>{ el.muted=false; el.play().catch(()=>{}); el.removeEventListener('pointerdown',unmuteOnce); };
+      el.addEventListener('pointerdown',unmuteOnce,{once:true});
     }
 
     function show(k){
@@ -232,18 +265,17 @@
       slides.forEach((s,idx)=> s.wrap.classList.toggle("active", idx===k));
       const cur = slides[k];
 
-      if (cur.tipo === "video") {
-        playVideo(cur.el);
-      } else if (cur.tipo === "texto" || cur.tipo === "foto") {
-        const ms = Math.max(1500, cur.ms || 3000);
-        t = setTimeout(()=> next(), ms);
+      if(cur.tipo==="video"){ playVideo(cur.el); }
+      else if(cur.tipo==="texto"||cur.tipo==="foto"){
+        const ms=Math.max(1500,cur.ms||3000);
+        t=setTimeout(()=>next(),ms);
       }
-      i = k;
+      i=k;
     }
 
     function next(){
-      const n = i + 1;
-      if (n >= slides.length) {
+      const n=i+1;
+      if(n>=slides.length){
         stage.classList.add("glass");
         slides[i].wrap.classList.remove("active");
         carregarCarta();
@@ -252,73 +284,32 @@
       show(n);
     }
 
-    // música
-    let track = 0, musicTimer = null;
-    function loadTrack(idx){
-      if (!PLAYLIST.length) return;
-      track = (idx + PLAYLIST.length) % PLAYLIST.length;
-      audio.src = PLAYLIST[track];
-      audio.volume = MUSIC_VOLUME;
-      audio.play().catch(()=> audioHint.classList.add("show"));
-    }
-    function startMusicWithDelay(){
-      if (!PLAYLIST.length) return;
-      clearTimeout(musicTimer);
-      musicTimer = setTimeout(()=> loadTrack(0), MUSIC_DELAY_MS);
-    }
-    audio.addEventListener("ended", ()=> loadTrack(track+1));
-
-    // desbloqueio robusto (Android/iOS)
-    let audioCtx = null;
-    function ensureAudioContext(){
-      if (!audioCtx) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) { audioCtx = new Ctx(); try { audioCtx.resume(); } catch {} }
-      }
-    }
-    function unlockAudio(){
-      ensureAudioContext();
-      if (!audio.src) loadTrack(0);
-      audio.muted = false;
-      audio.volume = MUSIC_VOLUME;
-      audio.play().catch(()=>{});
-      audioHint.classList.remove("show");
-      window.removeEventListener('pointerdown', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
-    }
-    window.addEventListener('pointerdown', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio, { passive:true });
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('keydown', unlockAudio);
-
-    // carta (carrega carta.txt)
+    /* ====== CARTA ====== */
     async function carregarCarta(){
       try{
-        const resp = await fetch('carta.txt?'+Date.now());
+        const resp=await fetch('carta.txt?'+Date.now());
         if(!resp.ok) throw new Error('sem carta.txt');
-        const raw = (await resp.text()).trim();
-        const html = raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
-        const texto = document.getElementById('cartaTexto');
-        texto.innerHTML = html || '<p>...</p>';
+        const raw=(await resp.text()).trim();
+        const html=raw.split(/\r?\n\r?\n/).map(p=>`<p>${p.replace(/\r?\n/g,'<br>')}</p>`).join('');
+        const texto=document.getElementById('cartaTexto');
+        texto.innerHTML=html||'<p>...</p>';
         cartaBox.classList.remove('hidden');
-        const card = cartaBox.querySelector('.paper');
-        requestAnimationFrame(()=> card.classList.add('show'));
-        cartaBox.scrollIntoView({behavior:'smooth', block:'start'});
+        const card=cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=>card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
       }catch(e){
-        const texto = document.getElementById('cartaTexto');
-        texto.innerHTML = '<p>Carta indisponível. (Se estiver abrindo com file://, rode um servidor local.)</p>';
+        const texto=document.getElementById('cartaTexto');
+        texto.innerHTML='<p>Carta indisponível. (Se estiver abrindo com file://, rode um servidor local.)</p>';
         cartaBox.classList.remove('hidden');
-        const card = cartaBox.querySelector('.paper');
-        requestAnimationFrame(()=> card.classList.add('show'));
-        cartaBox.scrollIntoView({behavior:'smooth', block:'start'});
+        const card=cartaBox.querySelector('.paper');
+        requestAnimationFrame(()=>card.classList.add('show'));
+        cartaBox.scrollIntoView({behavior:'smooth',block:'start'});
       }
     }
 
     // iniciar
-    if (slides.length) show(0);
-    if (PLAYLIST.length) startMusicWithDelay();
+    if(slides.length) show(0);
+    if(PLAYLIST.length) startMusicWithDelay();
   </script>
 </body>
 </html>
