@@ -143,14 +143,14 @@
 
     /* Estados + animações flip VERTICAL (para cima) */
     .page.active{ opacity:1; }
-    .flip-out{ animation: flipOut .7s ease forwards; transform-origin: 50% 100%; }
+    .flip-out{ animation: flipOut .7s ease forwards; transform-origin: 50% 0%; }
     @keyframes flipOut{
       0%{opacity:1; transform: translateZ(0) rotateX(0deg)}
-      100%{opacity:0; transform: translateZ(0) rotateX(-75deg)}
+      100%{opacity:0; transform: translateZ(0) rotateX(75deg)}
     }
-    .flip-in{ animation: flipIn .7s ease forwards; transform-origin: 50% 0%; }
+    .flip-in{ animation: flipIn .7s ease forwards; transform-origin: 50% 100%; }
     @keyframes flipIn{
-      0%{opacity:0; transform: translateZ(0) rotateX(75deg)}
+      0%{opacity:0; transform: translateZ(0) rotateX(-75deg)}
       100%{opacity:1; transform: translateZ(0) rotateX(0deg)}
     }
 
@@ -513,4 +513,5 @@
   </script>
 </body>
 </html>
+
 
