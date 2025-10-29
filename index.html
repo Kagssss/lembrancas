@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lembranças — slideshow</title>
+  <title>Lembranças — álbum</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
   <style>
@@ -12,32 +12,88 @@
     html,body{height:100%}
     body{background:var(--bg);color:var(--ink)}
     .wrap{max-width:1100px;margin:0 auto;padding:20px}
+
+    /* Palco com “livro” */
     .stage{
       position:relative; width:100%; height:86vh; max-height:980px; 
       border-radius:18px; border:1px solid rgba(255,255,255,.12);
       overflow:hidden; display:flex; align-items:center; justify-content:center;
-      background: radial-gradient(800px 400px at 20% 0%, rgba(125,211,252,.10), transparent 50%),
-                  radial-gradient(700px 400px at 80% 100%, rgba(99,102,241,.10), transparent 50%),
-                  #0d1225;
+      perspective: 1600px;
+      background:
+        radial-gradient(900px 400px at 15% 0%, rgba(125,211,252,.08), transparent 50%),
+        radial-gradient(900px 400px at 85% 100%, rgba(99,102,241,.08), transparent 50%),
+        #0d1225;
     }
-    .slide{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .6s ease}
-    .slide.active{opacity:1}
-    .slide img,.slide video{
-      max-width:100%; max-height:100%; object-fit:contain; 
-      background:transparent; border-radius:12px;
+    /* “Livro” com leve coluna no meio */
+    .book {
+      position:relative; width:min(100%, 980px); height:100%;
+      display:flex; align-items:center; justify-content:center;
     }
-    .texto{
+    .spine {
+      position:absolute; top:0; bottom:0; left:50%; width:3px; transform:translateX(-50%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+      pointer-events:none;
+    }
+
+    /* Página (uma por vez) */
+    .page {
+      position:absolute; inset:30px; margin:auto;
+      width:calc(100% - 60px); height:calc(100% - 60px);
+      border-radius:16px;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,.05), rgba(255,255,255,.02) 40%, rgba(0,0,0,.06) 100%),
+        #0f152d;
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:
+        0 30px 60px rgba(0,0,0,.55),
+        inset 0 0 0 1px rgba(255,255,255,.04);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transform: translateZ(0) rotateY(0deg) scale(.995);
+      transition: opacity .5s ease;
+      overflow:hidden;
+    }
+    /* conteúdo dentro da página */
+    .page .content {
+      width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:14px;
+    }
+    .page img, .page video {
+      max-width:100%; max-height:100%; object-fit:contain; border-radius:12px;
+    }
+    .texto {
       padding:26px 22px; border-radius:14px;
       background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
       text-align:center; max-width:min(760px, 92%); line-height:1.5;
       font-size:clamp(16px, 2.2vw, 20px);
     }
+
+    /* Estados */
+    .page.active { opacity:1; }
+    /* vira saindo (gira para a esquerda) */
+    .turn-out {
+      animation: turnOut .7s ease forwards;
+      transform-origin: 0% 50%;
+    }
+    @keyframes turnOut {
+      0% { opacity:1; transform: translateZ(0) rotateY(0deg) }
+      100% { opacity:0; transform: translateZ(0) rotateY(-70deg) }
+    }
+    /* vira entrando (gira a partir da direita) */
+    .turn-in {
+      animation: turnIn .7s ease forwards;
+      transform-origin: 100% 50%;
+    }
+    @keyframes turnIn {
+      0% { opacity:0; transform: translateZ(0) rotateY(70deg) }
+      100% { opacity:1; transform: translateZ(0) rotateY(0deg) }
+    }
+
     .glass{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px)}
     .hint{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); z-index:40; flex-direction:column;}
     .hint.show{display:flex}
     .pulse-heart{font-size:50px;color:#ff4d6d;animation:pulse 1.5s infinite;margin-bottom:14px}
     @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
-    /* Carta */
+
+    /* Carta estilizada */
     .carta-wrap{display:flex;align-items:center;justify-content:center}
     .carta{max-width:860px;width:100%;background:#0b1020}
     .paper{position:relative;margin:0 auto;padding:clamp(20px,4vw,36px) clamp(22px,4.5vw,44px);border-radius:16px;background:
@@ -60,7 +116,12 @@
   </header>
 
   <main class="wrap">
-    <section id="stage" class="stage"></section>
+    <section id="stage" class="stage">
+      <div class="book">
+        <div class="spine" aria-hidden="true"></div>
+        <!-- páginas são injetadas aqui via JS -->
+      </div>
+    </section>
 
     <section id="cartaBox" class="mt-8 hidden carta-wrap">
       <div class="carta">
@@ -76,6 +137,7 @@
 
   <footer class="wrap pb-6 text-center text-sm text-slate-400"></footer>
 
+  <!-- Música -->
   <audio id="audio" preload="metadata"></audio>
   <div id="audioHint" class="hint">
     <div class="pulse-heart">❤️</div>
@@ -144,96 +206,71 @@
     const DUCK_VOLUME = 0.22;          // volume da música durante vídeo (Android/desktop)
     const IOS_MODE = "video";          // "video" = pausa música e toca áudio do vídeo | "music" = mantém música e vídeo mudo no iOS
 
-    const stage = document.getElementById("stage");
+    const book = document.querySelector('.book');
     const cartaBox = document.getElementById("cartaBox");
     const audio = document.getElementById("audio");
     const audioHint = document.getElementById("audioHint");
-
-    // iOS detection (Chrome no iOS também é WebKit)
     const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // cria slides
+    /* ===== cria páginas ===== */
     const slides = SEQUENCIA.map(item=>{
-      const wrap = document.createElement("div");
-      wrap.className = "slide";
+      const page = document.createElement('div');
+      page.className = 'page';
+      const content = document.createElement('div');
+      content.className = 'content';
       let el;
       if(item.tipo==="texto"){ el=document.createElement("div"); el.className="texto"; el.textContent=item.texto; }
       else if(item.tipo==="foto"){ el=document.createElement("img"); el.src=item.src; el.alt="foto"; }
       else if(item.tipo==="video"){
         const v=document.createElement("video");
-        v.setAttribute("playsinline","");
-        v.setAttribute("webkit-playsinline","");
-        v.playsInline=true;
-        v.muted=true;         // começa mudo (autoplay permitido)
-        v.preload="auto";
-        v.controls=false;
-        v.src=item.src;
+        v.setAttribute("playsinline",""); v.setAttribute("webkit-playsinline","");
+        v.playsInline=true; v.muted=true; v.preload="auto"; v.controls=false; v.src=item.src;
         el=v;
       }
-      wrap.appendChild(el);
-      stage.appendChild(wrap);
-      return { wrap, el, ...item };
+      content.appendChild(el);
+      page.appendChild(content);
+      book.appendChild(page);
+      return { page, el, ...item };
     });
 
-    /* ====== ÁUDIO GLOBAL / OVERLAY ====== */
-    let audioCtx = null;
-    let audioUnlocked = false;
-    let track = 0, musicTimer = null;
+    /* ===== ÁUDIO GLOBAL / OVERLAY ===== */
+    let audioCtx = null, audioUnlocked = false, track = 0, musicTimer = null;
 
     function ensureAudioContext(){
       if(!audioCtx){
         const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) {
-          audioCtx = new Ctx();
-          try { audioCtx.resume(); } catch {}
-        }
+        if (Ctx) { audioCtx = new Ctx(); try { audioCtx.resume(); } catch{} }
       }
     }
-
     function loadTrack(idx){
       if(!PLAYLIST.length) return;
       track = (idx + PLAYLIST.length) % PLAYLIST.length;
-      audio.src = PLAYLIST[track];
-      audio.volume = MUSIC_VOLUME;
+      audio.src = PLAYLIST[track]; audio.volume = MUSIC_VOLUME;
     }
-
     function startMusicWithDelay(){
       if(!PLAYLIST.length) return;
       clearTimeout(musicTimer);
       musicTimer = setTimeout(async ()=>{
-        if (!audioUnlocked) return;              // só inicia se já desbloqueado
+        if (!audioUnlocked) return;
         if (!audio.src) loadTrack(0);
-        try { await audio.play(); } catch {      // se falhar, mostra overlay
-          audioHint.classList.add('show');
-        }
+        try { await audio.play(); } catch { audioHint.classList.add('show'); }
       }, MUSIC_DELAY_MS);
     }
-
     audio.addEventListener("ended", ()=> {
       loadTrack(track + 1);
       if (audioUnlocked) { audio.play().catch(()=>{}); }
     });
 
-    // ✅ DESBLOQUEIO ROBUSTO — overlay só sai quando play() realmente roda
     async function tryUnlockAndPlay(){
       ensureAudioContext();
-      clearTimeout(musicTimer);                  // evita conflito com o delay
-
+      clearTimeout(musicTimer);
       if (!audio.src) loadTrack(0);
-      audio.muted = false;
-      audio.volume = MUSIC_VOLUME;
-
+      audio.muted = false; audio.volume = MUSIC_VOLUME;
       try {
-        await audio.play();                      // precisa estar dentro do gesto
-        audioUnlocked = true;
-        audioHint.classList.remove('show');
-        removeUnlockListeners();
-      } catch (e) {
-        // Falhou (política do navegador): mantém overlay e listeners
-        audioHint.classList.add('show');
-      }
+        await audio.play();
+        audioUnlocked = true; audioHint.classList.remove('show'); removeUnlockListeners();
+      } catch { audioHint.classList.add('show'); }
     }
-
     function unlockAudioHandler(){ tryUnlockAndPlay(); }
     function removeUnlockListeners(){
       window.removeEventListener('pointerdown', unlockAudioHandler);
@@ -243,8 +280,6 @@
       audioHint.removeEventListener('click', unlockAudioHandler);
       audioHint.removeEventListener('touchstart', unlockAudioHandler);
     }
-
-    // listeners para qualquer gesto
     window.addEventListener('pointerdown', unlockAudioHandler);
     window.addEventListener('touchstart', unlockAudioHandler, { passive:true });
     window.addEventListener('click', unlockAudioHandler);
@@ -252,18 +287,13 @@
     audioHint.addEventListener('click', unlockAudioHandler);
     audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
 
-    /* ====== SLIDES / VÍDEO ====== */
-    let i=0,t=null;
+    /* ===== SLIDES / VIRAR PÁGINA ===== */
+    let i = 0, t = null;
     function clearTimer(){ if(t){ clearTimeout(t); t=null; } }
 
     function safeUnmuteVideo(v){
       if(!audioUnlocked) return;
-      if(isIOS && IOS_MODE==="music"){
-        // iOS priorizando música: mantém vídeo mudo
-        v.muted = true;
-        return;
-      }
-      // demais casos: desmutar para ouvir o vídeo
+      if(isIOS && IOS_MODE==="music"){ v.muted = true; return; }
       setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 60);
     }
 
@@ -272,63 +302,39 @@
       const prevVol = audio.volume;
 
       if (isIOS) {
-        if (IOS_MODE === "video") {
-          // iOS priorizando o vídeo: pausar música
-          if (musicWasPlaying) audio.pause();
-        } else {
-          // iOS priorizando música: manter música e vídeo ficará mudo
-          if (musicWasPlaying) audio.volume = MUSIC_VOLUME; // garante volume normal
-        }
+        if (IOS_MODE === "video") { if (musicWasPlaying) audio.pause(); }
+        else { if (musicWasPlaying) audio.volume = MUSIC_VOLUME; }
       } else {
-        // Android/desktop: ducking
         if (musicWasPlaying) audio.volume = DUCK_VOLUME;
       }
 
-      el.muted = true;
-      el.playsInline = true;
-      el.currentTime = 0;
+      el.muted = true; el.playsInline = true; el.currentTime = 0;
       try{ el.load(); }catch{}
 
       let started=false;
       const watchdog=setTimeout(()=>{
         if(!started){
-          // não começou, restaura música e segue
           if (isIOS) {
-            if (IOS_MODE === "video") {
-              if (musicWasPlaying) audio.play().catch(()=>{});
-            } else {
-              if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
-            }
-          } else {
-            if (musicWasPlaying) audio.volume = prevVol;
-          }
+            if (IOS_MODE === "video") { if (musicWasPlaying) audio.play().catch(()=>{}); }
+            else { if (musicWasPlaying) audio.volume = MUSIC_VOLUME; }
+          } else { if (musicWasPlaying) audio.volume = prevVol; }
           next();
         }
-      }, 1800); // menor “travado” antes do play
+      }, 1800);
 
       el.onplay = () => { started=true; clearTimeout(watchdog); safeUnmuteVideo(el); };
       el.onended = () => {
         if (isIOS) {
-          if (IOS_MODE === "video") {
-            if (musicWasPlaying) audio.play().catch(()=>{});
-          } else {
-            if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
-          }
-        } else {
-          if (musicWasPlaying) audio.volume = prevVol;
-        }
+          if (IOS_MODE === "video") { if (musicWasPlaying) audio.play().catch(()=>{}); }
+          else { if (musicWasPlaying) audio.volume = MUSIC_VOLUME; }
+        } else { if (musicWasPlaying) audio.volume = prevVol; }
         next();
       };
       el.onerror = () => {
         if (isIOS) {
-          if (IOS_MODE === "video") {
-            if (musicWasPlaying) audio.play().catch(()=>{});
-          } else {
-            if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
-          }
-        } else {
-          if (musicWasPlaying) audio.volume = prevVol;
-        }
+          if (IOS_MODE === "video") { if (musicWasPlaying) audio.play().catch(()=>{}); }
+          else { if (musicWasPlaying) audio.volume = MUSIC_VOLUME; }
+        } else { if (musicWasPlaying) audio.volume = prevVol; }
         next();
       };
 
@@ -337,18 +343,39 @@
         document.addEventListener('touchstart',tryOnTouch,{once:true,passive:true});
       });
 
-      // permitir desmutar com toque (se áudio do vídeo estiver habilitado)
-      const unmuteOnce=()=>{ el.muted=false; el.play().catch(()=>{}); el.removeEventListener('pointerdown',unmuteOnce); };
       if(!(isIOS && IOS_MODE==="music")){
+        const unmuteOnce=()=>{ el.muted=false; el.play().catch(()=>{}); el.removeEventListener('pointerdown',unmuteOnce); };
         el.addEventListener('pointerdown',unmuteOnce,{once:true});
+      }
+    }
+
+    function applyPageTurn(prevIdx, nextIdx){
+      if (prevIdx !== null && slides[prevIdx]) {
+        const p = slides[prevIdx].page;
+        p.classList.remove('active','turn-in');
+        // força reflow antes de aplicar animação
+        // eslint-disable-next-line no-unused-expressions
+        p.offsetWidth;
+        p.classList.add('turn-out');
+        setTimeout(()=>{ p.classList.remove('turn-out'); }, 750);
+      }
+      if (slides[nextIdx]) {
+        const n = slides[nextIdx].page;
+        n.classList.remove('turn-out');
+        // reflow
+        // eslint-disable-next-line no-unused-expressions
+        n.offsetWidth;
+        n.classList.add('turn-in','active');
+        setTimeout(()=>{ n.classList.remove('turn-in'); }, 750);
       }
     }
 
     function show(k){
       clearTimer();
-      slides.forEach((s,idx)=> s.wrap.classList.toggle("active", idx===k));
-      const cur = slides[k];
+      const prev = (typeof i === 'number') ? i : null;
+      applyPageTurn(prev, k);
 
+      const cur = slides[k];
       if(cur.tipo==="video"){ playVideo(cur.el); }
       else if(cur.tipo==="texto"||cur.tipo==="foto"){
         const ms=Math.max(1500,cur.ms||3000);
@@ -358,17 +385,17 @@
     }
 
     function next(){
-      const n=i+1;
-      if(n>=slides.length){
-        stage.classList.add("glass");
-        slides[i].wrap.classList.remove("active");
+      const n = i + 1;
+      if(n >= slides.length){
+        slides[i].page.classList.remove('active');
+        document.querySelector('.stage').classList.add('glass');
         carregarCarta();
         return;
       }
       show(n);
     }
 
-    /* ====== CARTA ====== */
+    /* ===== CARTA ===== */
     async function carregarCarta(){
       try{
         const resp=await fetch('carta.txt?'+Date.now());
