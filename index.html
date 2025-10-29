@@ -141,14 +141,15 @@
     const PLAYLIST = ["musicas/4.mp3","musicas/3.mp3"];
     const MUSIC_VOLUME = 0.6;
     const MUSIC_DELAY_MS = 4000;
-    const DUCK_VOLUME = 0.22; // volume durante vídeo (Android/desktop)
+    const DUCK_VOLUME = 0.22;          // volume da música durante vídeo (Android/desktop)
+    const IOS_MODE = "video";          // "video" = pausa música e toca áudio do vídeo | "music" = mantém música e vídeo mudo no iOS
 
     const stage = document.getElementById("stage");
     const cartaBox = document.getElementById("cartaBox");
     const audio = document.getElementById("audio");
     const audioHint = document.getElementById("audioHint");
 
-    // detecção básica de iOS
+    // iOS detection (Chrome no iOS também é WebKit)
     const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     // cria slides
@@ -163,7 +164,7 @@
         v.setAttribute("playsinline","");
         v.setAttribute("webkit-playsinline","");
         v.playsInline=true;
-        v.muted=true;         // autoplay permitido
+        v.muted=true;         // começa mudo (autoplay permitido)
         v.preload="auto";
         v.controls=false;
         v.src=item.src;
@@ -174,108 +175,110 @@
       return { wrap, el, ...item };
     });
 
-/* ====== ÁUDIO GLOBAL / OVERLAY ====== */
-let audioCtx = null;
-let audioUnlocked = false;
-let track = 0, musicTimer = null;
+    /* ====== ÁUDIO GLOBAL / OVERLAY ====== */
+    let audioCtx = null;
+    let audioUnlocked = false;
+    let track = 0, musicTimer = null;
 
-function ensureAudioContext(){
-  if(!audioCtx){
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (Ctx) {
-      audioCtx = new Ctx();
-      try { audioCtx.resume(); } catch {}
+    function ensureAudioContext(){
+      if(!audioCtx){
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) {
+          audioCtx = new Ctx();
+          try { audioCtx.resume(); } catch {}
+        }
+      }
     }
-  }
-}
 
-function loadTrack(idx){
-  if(!PLAYLIST.length) return;
-  track = (idx + PLAYLIST.length) % PLAYLIST.length;
-  audio.src = PLAYLIST[track];
-  audio.volume = MUSIC_VOLUME;
-}
+    function loadTrack(idx){
+      if(!PLAYLIST.length) return;
+      track = (idx + PLAYLIST.length) % PLAYLIST.length;
+      audio.src = PLAYLIST[track];
+      audio.volume = MUSIC_VOLUME;
+    }
 
-function startMusicWithDelay(){
-  if(!PLAYLIST.length) return;
-  clearTimeout(musicTimer);
-  musicTimer = setTimeout(async ()=>{
-    if (!audioUnlocked) return; // só inicia automático se já estiver desbloqueado
-    if (!audio.src) loadTrack(0);
-    try { await audio.play(); } catch { audioHint.classList.add('show'); }
-  }, MUSIC_DELAY_MS);
-}
+    function startMusicWithDelay(){
+      if(!PLAYLIST.length) return;
+      clearTimeout(musicTimer);
+      musicTimer = setTimeout(async ()=>{
+        if (!audioUnlocked) return;              // só inicia se já desbloqueado
+        if (!audio.src) loadTrack(0);
+        try { await audio.play(); } catch {      // se falhar, mostra overlay
+          audioHint.classList.add('show');
+        }
+      }, MUSIC_DELAY_MS);
+    }
 
-audio.addEventListener("ended", ()=> {
-  loadTrack(track + 1);
-  // tenta tocar a próxima só se já desbloqueado
-  if (audioUnlocked) { audio.play().catch(()=>{}); }
-});
+    audio.addEventListener("ended", ()=> {
+      loadTrack(track + 1);
+      if (audioUnlocked) { audio.play().catch(()=>{}); }
+    });
 
-// ✅ DESBLOQUEIO ROBUSTO (só some overlay quando o play realmente começa)
-async function tryUnlockAndPlay(){
-  ensureAudioContext();
-  clearTimeout(musicTimer); // não deixa o delay atrapalhar
+    // ✅ DESBLOQUEIO ROBUSTO — overlay só sai quando play() realmente roda
+    async function tryUnlockAndPlay(){
+      ensureAudioContext();
+      clearTimeout(musicTimer);                  // evita conflito com o delay
 
-  if (!audio.src) loadTrack(0);
-  audio.muted = false;
-  audio.volume = MUSIC_VOLUME;
+      if (!audio.src) loadTrack(0);
+      audio.muted = false;
+      audio.volume = MUSIC_VOLUME;
 
-  try {
-    await audio.play(); // precisa ocorrer dentro do gesto do usuário
-    audioUnlocked = true;
-    audioHint.classList.remove('show');
-    removeUnlockListeners();
-  } catch (e) {
-    // Falhou (ex.: política do navegador). Mantém overlay e listeners.
-    audioHint.classList.add('show');
-  }
-}
+      try {
+        await audio.play();                      // precisa estar dentro do gesto
+        audioUnlocked = true;
+        audioHint.classList.remove('show');
+        removeUnlockListeners();
+      } catch (e) {
+        // Falhou (política do navegador): mantém overlay e listeners
+        audioHint.classList.add('show');
+      }
+    }
 
-function unlockAudioHandler(){ tryUnlockAndPlay(); }
-function removeUnlockListeners(){
-  window.removeEventListener('pointerdown', unlockAudioHandler);
-  window.removeEventListener('touchstart', unlockAudioHandler);
-  window.removeEventListener('click', unlockAudioHandler);
-  window.removeEventListener('keydown', unlockAudioHandler);
-  audioHint.removeEventListener('click', unlockAudioHandler);
-  audioHint.removeEventListener('touchstart', unlockAudioHandler);
-}
+    function unlockAudioHandler(){ tryUnlockAndPlay(); }
+    function removeUnlockListeners(){
+      window.removeEventListener('pointerdown', unlockAudioHandler);
+      window.removeEventListener('touchstart', unlockAudioHandler);
+      window.removeEventListener('click', unlockAudioHandler);
+      window.removeEventListener('keydown', unlockAudioHandler);
+      audioHint.removeEventListener('click', unlockAudioHandler);
+      audioHint.removeEventListener('touchstart', unlockAudioHandler);
+    }
 
-// listeners para qualquer gesto
-window.addEventListener('pointerdown', unlockAudioHandler);
-window.addEventListener('touchstart', unlockAudioHandler, { passive:true });
-window.addEventListener('click', unlockAudioHandler);
-window.addEventListener('keydown', unlockAudioHandler);
-audioHint.addEventListener('click', unlockAudioHandler);
-audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
-
-// Não esconda o overlay apenas com 'play' disparado acidentalmente.
-// (Se quiser manter, pode deixar; mas o robusto já cuida.)
-// audio.addEventListener('play', ()=> audioHint.classList.remove('show'));
-// audio.addEventListener('playing', ()=> audioHint.classList.remove('show'));
-
+    // listeners para qualquer gesto
+    window.addEventListener('pointerdown', unlockAudioHandler);
+    window.addEventListener('touchstart', unlockAudioHandler, { passive:true });
+    window.addEventListener('click', unlockAudioHandler);
+    window.addEventListener('keydown', unlockAudioHandler);
+    audioHint.addEventListener('click', unlockAudioHandler);
+    audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
 
     /* ====== SLIDES / VÍDEO ====== */
     let i=0,t=null;
     function clearTimer(){ if(t){ clearTimeout(t); t=null; } }
 
     function safeUnmuteVideo(v){
-      if(audioUnlocked && !isIOS){ // em iOS vamos deixar só o áudio do vídeo (música pausada)
-        setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 80);
-      } else if (audioUnlocked && isIOS){
-        // iOS: desmutar também, mas música ficará pausada
-        setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 80);
+      if(!audioUnlocked) return;
+      if(isIOS && IOS_MODE==="music"){
+        // iOS priorizando música: mantém vídeo mudo
+        v.muted = true;
+        return;
       }
+      // demais casos: desmutar para ouvir o vídeo
+      setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 60);
     }
 
     function playVideo(el){
       const musicWasPlaying = !audio.paused;
-      let prevVol = audio.volume;
+      const prevVol = audio.volume;
 
       if (isIOS) {
-        // iOS: pausar música (mixar dá conflito), retomar no fim
-        if (musicWasPlaying) audio.pause();
+        if (IOS_MODE === "video") {
+          // iOS priorizando o vídeo: pausar música
+          if (musicWasPlaying) audio.pause();
+        } else {
+          // iOS priorizando música: manter música e vídeo ficará mudo
+          if (musicWasPlaying) audio.volume = MUSIC_VOLUME; // garante volume normal
+        }
       } else {
         // Android/desktop: ducking
         if (musicWasPlaying) audio.volume = DUCK_VOLUME;
@@ -289,20 +292,28 @@ audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
       let started=false;
       const watchdog=setTimeout(()=>{
         if(!started){
-          // se não começou, restaura estado de música e segue
+          // não começou, restaura música e segue
           if (isIOS) {
-            if (musicWasPlaying) audio.play().catch(()=>{});
+            if (IOS_MODE === "video") {
+              if (musicWasPlaying) audio.play().catch(()=>{});
+            } else {
+              if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
+            }
           } else {
             if (musicWasPlaying) audio.volume = prevVol;
           }
           next();
         }
-      }, 2000); // reduzido para minimizar “travado” antes do play
+      }, 1800); // menor “travado” antes do play
 
       el.onplay = () => { started=true; clearTimeout(watchdog); safeUnmuteVideo(el); };
       el.onended = () => {
         if (isIOS) {
-          if (musicWasPlaying) audio.play().catch(()=>{});
+          if (IOS_MODE === "video") {
+            if (musicWasPlaying) audio.play().catch(()=>{});
+          } else {
+            if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
+          }
         } else {
           if (musicWasPlaying) audio.volume = prevVol;
         }
@@ -310,7 +321,11 @@ audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
       };
       el.onerror = () => {
         if (isIOS) {
-          if (musicWasPlaying) audio.play().catch(()=>{});
+          if (IOS_MODE === "video") {
+            if (musicWasPlaying) audio.play().catch(()=>{});
+          } else {
+            if (musicWasPlaying) audio.volume = MUSIC_VOLUME;
+          }
         } else {
           if (musicWasPlaying) audio.volume = prevVol;
         }
@@ -318,14 +333,15 @@ audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
       };
 
       el.play().catch(()=>{
-        // tenta ligar ao próximo toque
         const tryOnTouch=()=>{ el.play().catch(()=>{}); document.removeEventListener('touchstart',tryOnTouch); };
         document.addEventListener('touchstart',tryOnTouch,{once:true,passive:true});
       });
 
-      // permitir desmutar com toque (extra)
+      // permitir desmutar com toque (se áudio do vídeo estiver habilitado)
       const unmuteOnce=()=>{ el.muted=false; el.play().catch(()=>{}); el.removeEventListener('pointerdown',unmuteOnce); };
-      el.addEventListener('pointerdown',unmuteOnce,{once:true});
+      if(!(isIOS && IOS_MODE==="music")){
+        el.addEventListener('pointerdown',unmuteOnce,{once:true});
+      }
     }
 
     function show(k){
@@ -381,4 +397,3 @@ audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
   </script>
 </body>
 </html>
-
