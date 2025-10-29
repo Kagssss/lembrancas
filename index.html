@@ -174,56 +174,87 @@
       return { wrap, el, ...item };
     });
 
-    /* ====== ÁUDIO GLOBAL / OVERLAY ====== */
-    let audioCtx=null, audioUnlocked=false;
-    function ensureAudioContext(){
-      if(!audioCtx){
-        const Ctx=window.AudioContext||window.webkitAudioContext;
-        if(Ctx){ audioCtx=new Ctx(); try{ audioCtx.resume(); }catch{} }
-      }
-    }
-    function doUnlock(){
-      ensureAudioContext();
-      if(!audio.src) loadTrack(0);
-      audio.muted=false;
-      audio.volume=MUSIC_VOLUME;
-      audio.play().catch(()=>{});
-      audioUnlocked=true;
-      audioHint.classList.remove("show");
-    }
-    function unlockAudio(){ doUnlock(); removeUnlockListeners(); }
-    function removeUnlockListeners(){
-      window.removeEventListener('pointerdown',unlockAudio);
-      window.removeEventListener('touchstart',unlockAudio);
-      window.removeEventListener('click',unlockAudio);
-      window.removeEventListener('keydown',unlockAudio);
-      audioHint.removeEventListener('click',unlockAudio);
-      audioHint.removeEventListener('touchstart',unlockAudio);
-    }
-    window.addEventListener('pointerdown',unlockAudio);
-    window.addEventListener('touchstart',unlockAudio,{passive:true});
-    window.addEventListener('click',unlockAudio);
-    window.addEventListener('keydown',unlockAudio);
-    // também no próprio overlay:
-    audioHint.addEventListener('click',unlockAudio);
-    audioHint.addEventListener('touchstart',unlockAudio,{passive:true});
-    // se o áudio entrar em play por qualquer motivo, esconda o overlay:
-    audio.addEventListener('play', ()=> audioHint.classList.remove('show'));
+/* ====== ÁUDIO GLOBAL / OVERLAY ====== */
+let audioCtx = null;
+let audioUnlocked = false;
+let track = 0, musicTimer = null;
 
-    let track=0,musicTimer=null;
-    function loadTrack(idx){
-      if(!PLAYLIST.length) return;
-      track=(idx+PLAYLIST.length)%PLAYLIST.length;
-      audio.src=PLAYLIST[track];
-      audio.volume=MUSIC_VOLUME;
-      audio.play().catch(()=> audioHint.classList.add("show"));
+function ensureAudioContext(){
+  if(!audioCtx){
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) {
+      audioCtx = new Ctx();
+      try { audioCtx.resume(); } catch {}
     }
-    function startMusicWithDelay(){
-      if(!PLAYLIST.length) return;
-      clearTimeout(musicTimer);
-      musicTimer=setTimeout(()=>loadTrack(0),MUSIC_DELAY_MS);
-    }
-    audio.addEventListener("ended",()=>loadTrack(track+1));
+  }
+}
+
+function loadTrack(idx){
+  if(!PLAYLIST.length) return;
+  track = (idx + PLAYLIST.length) % PLAYLIST.length;
+  audio.src = PLAYLIST[track];
+  audio.volume = MUSIC_VOLUME;
+}
+
+function startMusicWithDelay(){
+  if(!PLAYLIST.length) return;
+  clearTimeout(musicTimer);
+  musicTimer = setTimeout(async ()=>{
+    if (!audioUnlocked) return; // só inicia automático se já estiver desbloqueado
+    if (!audio.src) loadTrack(0);
+    try { await audio.play(); } catch { audioHint.classList.add('show'); }
+  }, MUSIC_DELAY_MS);
+}
+
+audio.addEventListener("ended", ()=> {
+  loadTrack(track + 1);
+  // tenta tocar a próxima só se já desbloqueado
+  if (audioUnlocked) { audio.play().catch(()=>{}); }
+});
+
+// ✅ DESBLOQUEIO ROBUSTO (só some overlay quando o play realmente começa)
+async function tryUnlockAndPlay(){
+  ensureAudioContext();
+  clearTimeout(musicTimer); // não deixa o delay atrapalhar
+
+  if (!audio.src) loadTrack(0);
+  audio.muted = false;
+  audio.volume = MUSIC_VOLUME;
+
+  try {
+    await audio.play(); // precisa ocorrer dentro do gesto do usuário
+    audioUnlocked = true;
+    audioHint.classList.remove('show');
+    removeUnlockListeners();
+  } catch (e) {
+    // Falhou (ex.: política do navegador). Mantém overlay e listeners.
+    audioHint.classList.add('show');
+  }
+}
+
+function unlockAudioHandler(){ tryUnlockAndPlay(); }
+function removeUnlockListeners(){
+  window.removeEventListener('pointerdown', unlockAudioHandler);
+  window.removeEventListener('touchstart', unlockAudioHandler);
+  window.removeEventListener('click', unlockAudioHandler);
+  window.removeEventListener('keydown', unlockAudioHandler);
+  audioHint.removeEventListener('click', unlockAudioHandler);
+  audioHint.removeEventListener('touchstart', unlockAudioHandler);
+}
+
+// listeners para qualquer gesto
+window.addEventListener('pointerdown', unlockAudioHandler);
+window.addEventListener('touchstart', unlockAudioHandler, { passive:true });
+window.addEventListener('click', unlockAudioHandler);
+window.addEventListener('keydown', unlockAudioHandler);
+audioHint.addEventListener('click', unlockAudioHandler);
+audioHint.addEventListener('touchstart', unlockAudioHandler, { passive:true });
+
+// Não esconda o overlay apenas com 'play' disparado acidentalmente.
+// (Se quiser manter, pode deixar; mas o robusto já cuida.)
+// audio.addEventListener('play', ()=> audioHint.classList.remove('show'));
+// audio.addEventListener('playing', ()=> audioHint.classList.remove('show'));
+
 
     /* ====== SLIDES / VÍDEO ====== */
     let i=0,t=null;
@@ -350,3 +381,4 @@
   </script>
 </body>
 </html>
+
