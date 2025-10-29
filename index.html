@@ -141,12 +141,15 @@
     const PLAYLIST = ["musicas/4.mp3","musicas/3.mp3"];
     const MUSIC_VOLUME = 0.6;
     const MUSIC_DELAY_MS = 4000;
-    const DUCK_VOLUME = 0.22; // volume da música durante vídeo (ducking)
+    const DUCK_VOLUME = 0.22; // volume durante vídeo (Android/desktop)
 
     const stage = document.getElementById("stage");
     const cartaBox = document.getElementById("cartaBox");
     const audio = document.getElementById("audio");
     const audioHint = document.getElementById("audioHint");
+
+    // detecção básica de iOS
+    const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     // cria slides
     const slides = SEQUENCIA.map(item=>{
@@ -157,11 +160,10 @@
       else if(item.tipo==="foto"){ el=document.createElement("img"); el.src=item.src; el.alt="foto"; }
       else if(item.tipo==="video"){
         const v=document.createElement("video");
-        // atributos pra iPhone
         v.setAttribute("playsinline","");
         v.setAttribute("webkit-playsinline","");
         v.playsInline=true;
-        v.muted=true;         // começa mudo para autoplay
+        v.muted=true;         // autoplay permitido
         v.preload="auto";
         v.controls=false;
         v.src=item.src;
@@ -172,7 +174,7 @@
       return { wrap, el, ...item };
     });
 
-    /* ====== ÁUDIO GLOBAL (desbloqueio robusto) ====== */
+    /* ====== ÁUDIO GLOBAL / OVERLAY ====== */
     let audioCtx=null, audioUnlocked=false;
     function ensureAudioContext(){
       if(!audioCtx){
@@ -180,23 +182,33 @@
         if(Ctx){ audioCtx=new Ctx(); try{ audioCtx.resume(); }catch{} }
       }
     }
-    function unlockAudio(){
+    function doUnlock(){
       ensureAudioContext();
       if(!audio.src) loadTrack(0);
       audio.muted=false;
       audio.volume=MUSIC_VOLUME;
       audio.play().catch(()=>{});
-      audioHint.classList.remove("show");
       audioUnlocked=true;
+      audioHint.classList.remove("show");
+    }
+    function unlockAudio(){ doUnlock(); removeUnlockListeners(); }
+    function removeUnlockListeners(){
       window.removeEventListener('pointerdown',unlockAudio);
       window.removeEventListener('touchstart',unlockAudio);
       window.removeEventListener('click',unlockAudio);
       window.removeEventListener('keydown',unlockAudio);
+      audioHint.removeEventListener('click',unlockAudio);
+      audioHint.removeEventListener('touchstart',unlockAudio);
     }
     window.addEventListener('pointerdown',unlockAudio);
     window.addEventListener('touchstart',unlockAudio,{passive:true});
     window.addEventListener('click',unlockAudio);
     window.addEventListener('keydown',unlockAudio);
+    // também no próprio overlay:
+    audioHint.addEventListener('click',unlockAudio);
+    audioHint.addEventListener('touchstart',unlockAudio,{passive:true});
+    // se o áudio entrar em play por qualquer motivo, esconda o overlay:
+    audio.addEventListener('play', ()=> audioHint.classList.remove('show'));
 
     let track=0,musicTimer=null;
     function loadTrack(idx){
@@ -213,23 +225,30 @@
     }
     audio.addEventListener("ended",()=>loadTrack(track+1));
 
-    /* ====== SLIDES / VÍDEO (com ducking) ====== */
+    /* ====== SLIDES / VÍDEO ====== */
     let i=0,t=null;
     function clearTimer(){ if(t){ clearTimeout(t); t=null; } }
 
     function safeUnmuteVideo(v){
-      // iOS exige que o play já tenha começado muted; depois podemos desmutar
-      if(audioUnlocked){
+      if(audioUnlocked && !isIOS){ // em iOS vamos deixar só o áudio do vídeo (música pausada)
+        setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 80);
+      } else if (audioUnlocked && isIOS){
+        // iOS: desmutar também, mas música ficará pausada
         setTimeout(()=>{ try{ v.muted=false; v.volume=1; v.play().catch(()=>{}); }catch{} }, 80);
       }
     }
 
     function playVideo(el){
-      const hadMusic = !audio.paused;
+      const musicWasPlaying = !audio.paused;
       let prevVol = audio.volume;
 
-      // DUCK: abaixa música, não pausa
-      if (hadMusic) audio.volume = DUCK_VOLUME;
+      if (isIOS) {
+        // iOS: pausar música (mixar dá conflito), retomar no fim
+        if (musicWasPlaying) audio.pause();
+      } else {
+        // Android/desktop: ducking
+        if (musicWasPlaying) audio.volume = DUCK_VOLUME;
+      }
 
       el.muted = true;
       el.playsInline = true;
@@ -239,15 +258,33 @@
       let started=false;
       const watchdog=setTimeout(()=>{
         if(!started){
-          // falhou: restaura música e segue
-          if(hadMusic) audio.volume = prevVol;
+          // se não começou, restaura estado de música e segue
+          if (isIOS) {
+            if (musicWasPlaying) audio.play().catch(()=>{});
+          } else {
+            if (musicWasPlaying) audio.volume = prevVol;
+          }
           next();
         }
-      }, 4000);
+      }, 2000); // reduzido para minimizar “travado” antes do play
 
       el.onplay = () => { started=true; clearTimeout(watchdog); safeUnmuteVideo(el); };
-      el.onended = () => { if(hadMusic) audio.volume = prevVol; next(); };
-      el.onerror = () => { if(hadMusic) audio.volume = prevVol; next(); };
+      el.onended = () => {
+        if (isIOS) {
+          if (musicWasPlaying) audio.play().catch(()=>{});
+        } else {
+          if (musicWasPlaying) audio.volume = prevVol;
+        }
+        next();
+      };
+      el.onerror = () => {
+        if (isIOS) {
+          if (musicWasPlaying) audio.play().catch(()=>{});
+        } else {
+          if (musicWasPlaying) audio.volume = prevVol;
+        }
+        next();
+      };
 
       el.play().catch(()=>{
         // tenta ligar ao próximo toque
@@ -255,7 +292,7 @@
         document.addEventListener('touchstart',tryOnTouch,{once:true,passive:true});
       });
 
-      // permitir desmutar com toque no vídeo (extra)
+      // permitir desmutar com toque (extra)
       const unmuteOnce=()=>{ el.muted=false; el.play().catch(()=>{}); el.removeEventListener('pointerdown',unmuteOnce); };
       el.addEventListener('pointerdown',unmuteOnce,{once:true});
     }
